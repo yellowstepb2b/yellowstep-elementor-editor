@@ -1,0 +1,29 @@
+<?php
+namespace Yellowstep\ElementorEditor\Semantic;
+use Yellowstep\ElementorEditor\Elementor\Walker;
+if (!defined('ABSPATH')) { exit; }
+final class PageMap {
+    public static function build(int $postId): array {
+        $items=Walker::structure($postId);
+        $map=['hero'=>['heading'=>null,'intro'=>null,'buttons'=>[]],'headings'=>[],'text_blocks'=>[],'cards'=>[],'faqs'=>[],'forms'=>[],'all'=>$items];
+        $pendingFaq=null;
+        foreach ($items as $item) {
+            $wt=$item['widgetType']; $text=$item['text'];
+            if ($wt==='heading' && isset($text['title'])) {
+                $heading=['id'=>$item['id'],'text'=>$text['title'],'setting'=>'title','depth'=>$item['depth']];
+                $map['headings'][]=$heading; if (!$map['hero']['heading']) {$map['hero']['heading']=$heading;}
+                $plain=trim(wp_strip_all_tags($text['title']));
+                if (substr($plain,-1)==='?' || preg_match('/^(how|what|why|when)\s/i',$plain)) {$pendingFaq=['question'=>$heading,'answer'=>null];}
+            }
+            if ($wt==='text-editor' && isset($text['editor'])) {
+                $block=['id'=>$item['id'],'html'=>$text['editor'],'setting'=>'editor','depth'=>$item['depth']];
+                $map['text_blocks'][]=$block; if (!$map['hero']['intro']) {$map['hero']['intro']=$block;}
+                if ($pendingFaq && !$pendingFaq['answer']) {$pendingFaq['answer']=$block; $map['faqs'][]=$pendingFaq; $pendingFaq=null;}
+            }
+            if ($wt==='icon-box') {$map['cards'][]=['id'=>$item['id'],'title'=>$text['title_text']??'','description'=>$text['description_text']??'','title_setting'=>'title_text','description_setting'=>'description_text','depth'=>$item['depth']];}
+            if ($wt==='button') {$map['hero']['buttons'][]=['id'=>$item['id'],'text'=>$text['text']??'','setting'=>'text'];}
+            if ($wt==='form') {$map['forms'][]=['id'=>$item['id'],'form_name'=>$text['form_name']??'','button_text'=>$text['button_text']??'','email_to'=>$text['email_to']??''];}
+        }
+        return $map;
+    }
+}
