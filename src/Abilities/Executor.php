@@ -1,0 +1,20 @@
+<?php
+namespace Yellowstep\ElementorEditor\Abilities;
+use Yellowstep\ElementorEditor\Core; use Yellowstep\ElementorEditor\Elementor\DataStore; use Yellowstep\ElementorEditor\Editor\PageEditor; use Yellowstep\ElementorEditor\Semantic\PageMap; use Yellowstep\ElementorEditor\SEO\Yoast; use Yellowstep\ElementorEditor\Safety\Snapshots;
+if (!defined('ABSPATH')) { exit; }
+final class Executor {
+    public static function normalize($input): array { if($input instanceof \WP_REST_Request){return $input->get_params();} if(is_array($input)){return $input;} if(is_object($input)){return get_object_vars($input);} return []; }
+    public static function listPages($input=[]): array { return ['items'=>Core::listElementorPages()]; }
+    public static function listTemplates($input=[]): array { return ['items'=>Core::listTemplates()]; }
+    public static function getSemanticMap($input=[]){ $p=self::normalize($input); $postId=intval($p['post_id']??$p['id']??0); $post=Core::postCheck($postId); if(is_wp_error($post)){return $post;} return ['post_id'=>$postId,'title'=>Core::cleanTitle($post),'map'=>PageMap::build($postId)]; }
+    public static function duplicatePage($input=[]){ $p=self::normalize($input); return PageEditor::duplicatePage(intval($p['post_id']??0),sanitize_text_field($p['title']??''),sanitize_title($p['slug']??''),sanitize_key($p['status']??'draft')); }
+    public static function createServicePage($input=[]){ $p=self::normalize($input); $title=sanitize_text_field($p['title']??''); if(!$title){return new \WP_Error('invalid','title is required.',['status'=>400]);} $result=PageEditor::duplicatePage(intval($p['source_id']??0),$title,sanitize_title($p['slug']??$title),sanitize_key($p['status']??'draft')); if(is_wp_error($result)){return $result;} if(isset($p['seo_title'])||isset($p['meta_description'])||isset($p['focus_keyphrase'])){Yoast::update(intval($result['new_id']),$p['seo_title']??null,$p['meta_description']??null,$p['focus_keyphrase']??null);} return $result; }
+    public static function updateHero($input=[]){ $p=self::normalize($input); $postId=intval($p['post_id']??0); $post=Core::postCheck($postId); if(is_wp_error($post)){return $post;} $updated=[]; if(isset($p['heading'])){$updated['heading']=PageEditor::updateSectionField($postId,'hero','heading',(string)$p['heading']);} if(isset($p['intro'])){$updated['intro']=PageEditor::updateSectionField($postId,'hero','intro',(string)$p['intro']);} return ['updated'=>true,'post_id'=>$postId,'fields'=>array_keys($updated),'details'=>$updated]; }
+    public static function updateCard($input=[]){ $p=self::normalize($input); return PageEditor::updateCard(intval($p['post_id']??0),intval($p['index']??0),$p['title']??null,$p['description']??null); }
+    public static function updateFaq($input=[]){ $p=self::normalize($input); return PageEditor::updateFaq(intval($p['post_id']??0),intval($p['index']??0),$p['question']??null,$p['answer']??null); }
+    public static function replaceText($input=[]){ $p=self::normalize($input); return PageEditor::replaceText(intval($p['post_id']??0),(string)($p['old_text']??''),(string)($p['new_text']??'')); }
+    public static function updateYoast($input=[]){ $p=self::normalize($input); $postId=intval($p['post_id']??0); $post=Core::postCheck($postId); if(is_wp_error($post)){return $post;} return Yoast::update($postId,$p['seo_title']??null,$p['meta_description']??null,$p['focus_keyphrase']??null); }
+    public static function snapshots($input=[]){ $p=self::normalize($input); $postId=intval($p['post_id']??0); $post=Core::postCheck($postId); if(is_wp_error($post)){return $post;} return ['post_id'=>$postId,'snapshots'=>Snapshots::all($postId)]; }
+    public static function rollback($input=[]){ $p=self::normalize($input); $postId=intval($p['post_id']??0); $post=Core::postCheck($postId); if(is_wp_error($post)){return $post;} return Snapshots::rollback($postId,isset($p['index'])?intval($p['index']):null); }
+    public static function regenerateCss($input=[]): array { $p=self::normalize($input); $postId=intval($p['post_id']??0); DataStore::clearCache($postId); return ['regenerated'=>true,'post_id'=>$postId]; }
+}
