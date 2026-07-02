@@ -1,0 +1,14 @@
+{
+  "name": "yellowstep/elementor-editor",
+  "description": "Semantic Elementor editing helper for Yellowstep/WPVibe development workflows.",
+  "type": "wordpress-plugin",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "Yellowstep\\ElementorEditor\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.0"
+  }
+}
